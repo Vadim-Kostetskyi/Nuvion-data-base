@@ -15,23 +15,39 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
         case 'GET':
     
     // Всі записи
-    if ($uri === $baseProductsPath || $uri === $baseProductsPath.'/') {
-      $result = $mysql->query("SELECT * FROM products ORDER BY date DESC");
+        if ($uri === $baseProductsPath || $uri === $baseProductsPath.'/') {
+        $result = $mysql->query("SELECT * FROM products ORDER BY date DESC");
 
-                $items = [];
+                    $items = [];
 
-                  $debugFile = __DIR__ . '/debug_items.json';
-                  file_put_contents($debugFile, json_encode($items, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-                if ($result) {
-                    while ($row = $result->fetch_assoc()) {
-                        $items[] = $row;
+                    if ($result) {
+                        while ($row = $result->fetch_assoc()) {
+                            $items[] = $row;
+                        }
                     }
+
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode($items);
+                    exit;
                 }
 
-                header('Content-Type: application/json; charset=utf-8');
-                echo json_encode($items);
-                exit;
-            }
+                elseif ($uri === $baseProductsPath || $uri === $baseProductsPath.'/laatste') {
+                    // Вибираємо 4 останні записи за колонкою date
+                    $result = $mysql->query("SELECT * FROM products ORDER BY date DESC LIMIT 4");
+
+                    $items = [];
+
+                    if ($result) {
+                        while ($row = $result->fetch_assoc()) {
+                            $items[] = $row;
+                        }
+                    }
+
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode($items);
+                    exit;
+                }
+
 
 
 
