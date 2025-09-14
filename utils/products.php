@@ -239,6 +239,45 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
             }
         break;
 
+        case 'DELETE':
+            // Очікуємо URI /products/{id}
+            if (preg_match('#^' . preg_quote($baseProductsPath, '#') . '/(\d+)$#', $uri, $matches)) {
+                $id = (int)$matches[1];
+
+                // Отримати стару картинку для видалення (якщо потрібно)
+                $stmtSelect = $mysql->prepare("SELECT image FROM products WHERE id = ?");
+                $stmtSelect->bind_param("i", $id);
+                $stmtSelect->execute();
+                $result = $stmtSelect->get_result();
+                $imageUrl = '';
+                if ($row = $result->fetch_assoc()) $imageUrl = $row['image'];
+                $stmtSelect->close();
+
+                // Видалення запису з бази
+                $stmt = $mysql->prepare("DELETE FROM products WHERE id = ?");
+                $stmt->bind_param("i", $id);
+
+                if ($stmt->execute()) {
+                    // Опційно: видалити файл картинки
+                    if ($imageUrl && file_exists(__DIR__ . '/../' . $imageUrl)) {
+                        unlink(__DIR__ . '/../' . $imageUrl);
+                    }
+
+                    http_response_code(200);
+                    echo json_encode([
+                        "success" => true,
+                        "id" => $id
+                    ]);
+                } else {
+                    http_response_code(500);
+                    echo json_encode(["error" => "Failed to delete product"]);
+                }
+                $stmt->close();
+                exit;
+            }
+        break;
+
+
         default:
             http_response_code(405);
             echo json_encode(["error" => "Method not allowed"]);
