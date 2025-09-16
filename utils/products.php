@@ -2,10 +2,6 @@
 
 require_once __DIR__ . '/../route.php';
 
-function handleRequest(string $method, string $uri, mysqli $mysql): void {
-    global $apiBasePath;
-
-    $baseProductsPath = rtrim($apiBasePath, '/') . '/archive/products';
 
     // $logFile = __DIR__ . '/request.log';
     // $date = date('Y-m-d H:i:s');
@@ -25,6 +21,11 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
 
     // $log .= str_repeat("-", 40) . PHP_EOL;
     // file_put_contents($logFile, $log, FILE_APPEND);
+
+function handleRequest(string $method, string $uri, mysqli $mysql): void {
+    global $apiBasePath;
+
+    $baseProductsPath = rtrim($apiBasePath, '/') . '/archive/products';
 
     switch ($method) {
         case 'GET':
@@ -75,8 +76,9 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
                 $date = $_POST['date'] ?? '';
                 $work_performed = $_POST['work_performed'] ?? '';
                 $address = $_POST['address'] ?? '';
+                $language = $_POST['language'] ?? 'uk';
 
-                if (!$title || !$slug || !$description || !$date || !$address || !isset($_FILES['image'])) {
+                if (!$title || !$slug || !$description || !isset($_FILES['image'])) {
                     http_response_code(400);
                     echo json_encode(["error" => "Invalid input"]);
                     exit;
@@ -95,10 +97,10 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
                 $imageUrl = '/api/uploads/' . basename($imageFile['name']);
 
                 $stmt = $mysql->prepare("
-                    INSERT INTO products (title, slug, description, date, image, work_performed, address)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO products (title, slug, description, date, image, work_performed, address, language)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ");
-                $stmt->bind_param("sssssss", $title, $slug, $description, $date, $imageUrl, $work_performed, $address);
+                $stmt->bind_param("ssssssss", $title, $slug, $description, $date, $imageUrl, $work_performed, $address, $language);
                 if ($stmt->execute()) {
                     http_response_code(201);
                     echo json_encode([
@@ -111,7 +113,8 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
                             "date" => $date,
                             "image" => $imageUrl,
                             "work_performed" => $work_performed,
-                            "address" => $address
+                            "address" => $address,
+                            "language" => $language
                         ]
                     ]);
                 } else {
@@ -131,6 +134,7 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
                 $date = $_POST['date'] ?? '';
                 $work_performed = $_POST['work_performed'] ?? '';
                 $address = $_POST['address'] ?? '';
+                $language = $_POST['language'] ?? 'uk';
 
                 if (!$title || !$slug) {
                     http_response_code(400);
@@ -160,10 +164,10 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
 
                 $stmt = $mysql->prepare("
                     UPDATE products 
-                    SET title = ?, slug = ?, description = ?, date = ?, image = ?, work_performed = ?, address = ?
+                    SET title = ?, slug = ?, description = ?, date = ?, image = ?, work_performed = ?, address = ?, language = ?
                     WHERE id = ?
                 ");
-                $stmt->bind_param("sssssssi", $title, $slug, $description, $date, $imageUrl, $work_performed, $address, $id);
+                $stmt->bind_param("ssssssssi", $title, $slug, $description, $date, $imageUrl, $work_performed, $address, $language, $id);
 
                 if ($stmt->execute()) {
                     echo json_encode([
@@ -176,7 +180,8 @@ function handleRequest(string $method, string $uri, mysqli $mysql): void {
                             "date" => $date,
                             "image" => $imageUrl,
                             "work_performed" => $work_performed,
-                            "address" => $address
+                            "address" => $address,
+                            "language" => $language
                         ]
                     ]);
                 } else {
