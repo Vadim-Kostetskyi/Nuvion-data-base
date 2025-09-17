@@ -22,7 +22,7 @@ require_once __DIR__ . '/../route.php';
     // $log .= str_repeat("-", 40) . PHP_EOL;
     // file_put_contents($logFile, $log, FILE_APPEND);
 
-function handleRequest(string $method, string $uri, mysqli $mysql): void {
+function productRequest(string $method, string $uri, mysqli $mysql): void {
     global $apiBasePath;
 
     $baseProductsPath = rtrim($apiBasePath, '/') . '/archive/products';

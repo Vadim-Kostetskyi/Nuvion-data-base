@@ -1,5 +1,5 @@
 <?php
-require_once '../../../utils/products.php';
+require_once '../../../utils/login.php';
 require_once '../../../route.php';
 ob_start();
 
@@ -38,4 +38,4 @@ if ($mysql->connect_error) {
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = rtrim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
 
-productRequest($method, $uri, $mysql);
+loginRequest($method, $uri, $mysql);
