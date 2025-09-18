@@ -1,9 +1,10 @@
 <?php
 require_once '../../../utils/login.php';
+require_once '../../../helper.php';
 require_once '../../../route.php';
-ob_start();
 
-// loadEnv();
+ob_start();
+loadEnv();
 
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, PUT, POST, PATCH, DELETE, OPTIONS");
@@ -16,10 +17,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 $mysql = new mysqli(
-    'localhost',   // DB_HOST
-    'root',        // DB_USER
-    '',            // DB_PASS
-    'nuvion-sql'   // DB_NAME
+    $_ENV['DB_HOST'],
+    $_ENV['DB_USER'],
+    $_ENV['DB_PASS'],
+    $_ENV['DB_NAME']
 );
 
 
