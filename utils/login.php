@@ -10,7 +10,10 @@ function loginRequest(string $method, string $uri, mysqli $mysql): void {
     switch ($method) {
         case 'POST':
             if ($uri === $baseLoginPath . '/login') {
+                // зчитуємо тіло запиту
+                $rawInput = file_get_contents("php://input");
                 $data = json_decode($rawInput, true);
+
                 $login = $data['login'] ?? '';
                 $password = $data['password'] ?? '';
 
@@ -66,53 +69,47 @@ function loginRequest(string $method, string $uri, mysqli $mysql): void {
             }
             break;
 
-        case 'GET':
-            if ($uri === $baseLoginPath . '/verify') {
-                // $headers = getallheaders();
-                // $auth = $headers['Authorization'] ?? '';
-                // $token = str_replace('Bearer ', '', $auth);
-                // file_put_contents($logFile, $headers, FILE_APPEND);
+                case 'GET': // Перевірка токена
+                if ($uri === $baseLoginPath . '/verify') {
+                    $headers = getallheaders();
+                    $auth = $headers['Authorization'] ?? '';
+                    $token = str_replace('Bearer ', '', $auth);
 
-                $headers = getallheaders();
-                
-                $headersString = json_encode($headers);
-                
-                if (preg_match('/Bearer\s([a-f0-9]{64})/', $headersString, $matches)) {
-                    $token = $matches[1];
-                } else {
-                    $token = 'NOT FOUND';
-                }
+file_put_contents(__DIR__ . '/php-error.log', print_r($headers, true) . "\n", FILE_APPEND);
+file_put_contents(__DIR__ . '/php-error.log', print_r($_SERVER, true) . "\n", FILE_APPEND);
 
-                if (!$token) {
-                    http_response_code(400);
-                    echo json_encode(["error" => "Token required"]);
+
+
+                    if (!$token) {
+                        http_response_code(400);
+                        echo json_encode(["error" => "Token required"]);
+                        exit;
+                    }
+
+                    // Видаляємо прострочені токени
+                    $mysql->query("DELETE FROM tokens WHERE expires_at <= NOW()");
+
+                    $stmt = $mysql->prepare("SELECT id FROM tokens WHERE temporary_token = ? AND expires_at > NOW() LIMIT 1");
+                    if (!$stmt) {
+                        http_response_code(500);
+                        echo json_encode(["error" => "Prepare failed: " . $mysql->error]);
+                        exit;
+                    }
+
+                    $stmt->bind_param("s", $token);
+                    $stmt->execute();
+                    $row = $stmt->get_result()->fetch_assoc();
+                    $stmt->close();
+
+                    if ($row) {
+                        echo json_encode(["success" => true, "id" => $row['id']]);
+                    } else {
+                        http_response_code(401);
+                        echo json_encode(["error" => "Invalid or expired token"]);
+                    }
                     exit;
                 }
-
-                // Перевірка на дійсний токен та термін дії
-                $stmt = $mysql->prepare("SELECT id FROM tokens WHERE temporary_token = ? AND expires_at > NOW() LIMIT 1");
-                $mysql->query("DELETE FROM tokens WHERE expires_at <= NOW()");
-                
-                if (!$stmt) {
-                    http_response_code(500);
-                    echo json_encode(["error" => "Prepare failed: " . $mysql->error]);
-                    exit;
-                }
-
-                $stmt->bind_param("s", $token);
-                $stmt->execute();
-                $result = $stmt->get_result();
-                $row = $result->fetch_assoc();
-                $stmt->close();
-
-                if ($row) echo json_encode(["success" => true, "id" => $row['id']]);
-                else {
-                    http_response_code(401);
-                    echo json_encode(["error" => "Invalid or expired token"]);
-                }
-                exit;
-            }
-            break;
+                break;
 
         case 'DELETE':
             if ($uri === $baseLoginPath . '/logout') {
