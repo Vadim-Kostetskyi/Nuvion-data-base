@@ -150,7 +150,7 @@ function productRequest(string $method, string $uri, mysqli $mysql): void {
                 $oldImage = $result->fetch_assoc()['image'] ?? '';
                 $stmtSelect->close();
 
-                // Якщо завантажено нове зображення
+                // Обробка нового зображення
                 $imageUrl = $oldImage;
                 if (!empty($_FILES['image']['tmp_name'])) {
                     $uploadDir = __DIR__ . '/../api/uploads/';
@@ -162,33 +162,52 @@ function productRequest(string $method, string $uri, mysqli $mysql): void {
                     }
                 }
 
-                $stmt = $mysql->prepare("
-                    UPDATE products 
-                    SET title = ?, slug = ?, description = ?, date = ?, image = ?, work_performed = ?, address = ?, language = ?
-                    WHERE id = ?
-                ");
-                $stmt->bind_param("ssssssssi", $title, $slug, $description, $date, $imageUrl, $work_performed, $address, $language, $id);
+                // Перевірка: чи існує продукт з таким slug + language
+                $stmtCheck = $mysql->prepare("SELECT id FROM products WHERE slug = ? AND language = ?");
+                $stmtCheck->bind_param("ss", $slug, $language);
+                $stmtCheck->execute();
+                $resultCheck = $stmtCheck->get_result();
+                $existing = $resultCheck->fetch_assoc();
+                $stmtCheck->close();
 
-                if ($stmt->execute()) {
-                    echo json_encode([
-                        "success" => true,
-                        "id" => $id,
-                        "product" => [
-                            "title" => $title,
-                            "slug" => $slug,
-                            "description" => $description,
-                            "date" => $date,
-                            "image" => $imageUrl,
-                            "work_performed" => $work_performed,
-                            "address" => $address,
-                            "language" => $language
-                        ]
-                    ]);
+                if ($existing) {
+                    // Оновлюємо існуючий запис
+                    $updateId = $existing['id'];
+                    $stmt = $mysql->prepare("
+                        UPDATE products 
+                        SET title = ?, description = ?, date = ?, image = ?, work_performed = ?, address = ?
+                        WHERE id = ?
+                    ");
+                    $stmt->bind_param("ssssssi", $title, $description, $date, $imageUrl, $work_performed, $address, $updateId);
+                    $stmt->execute();
+                    $stmt->close();
+                    $id = $updateId;
                 } else {
-                    http_response_code(500);
-                    echo json_encode(["error" => "Database update failed"]);
+                    // Створюємо новий запис
+                    $stmt = $mysql->prepare("
+                        INSERT INTO products (slug, title, description, date, image, work_performed, address, language)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ");
+                    $stmt->bind_param("ssssssss", $slug, $title, $description, $date, $imageUrl, $work_performed, $address, $language);
+                    $stmt->execute();
+                    $id = $stmt->insert_id;
+                    $stmt->close();
                 }
-                $stmt->close();
+
+                echo json_encode([
+                    "success" => true,
+                    "id" => $id,
+                    "product" => [
+                        "title" => $title,
+                        "slug" => $slug,
+                        "description" => $description,
+                        "date" => $date,
+                        "image" => $imageUrl,
+                        "work_performed" => $work_performed,
+                        "address" => $address,
+                        "language" => $language
+                    ]
+                ]);
                 exit;
             }
             break;
